@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Server Fetch</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="container">
+        <input type="number" id="concurrencyLimit" min="0" max="100" required placeholder="Concurrency Limit (1-100)">
+        <button id="startButton">Start</button>
+        <ul id="results"></ul>
+    </div>
+
+    <script>
+        document.getElementById('startButton').addEventListener('click', async () => {
+            const concurrencyLimit = parseInt(document.getElementById('concurrencyLimit').value);
+            if (!concurrencyLimit || concurrencyLimit < 1 || concurrencyLimit > 100) {
+                alert('Please enter a valid number between 1 and 100');
+                return;
+            }
+
+            const startButton = document.getElementById('startButton');
+            startButton.disabled = true;
+
+            const resultsList = document.getElementById('results');
+            const totalRequests = 1000;
+            let activeRequests = 0, completedRequests = 0, requestIndex = 1;
+
+            const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+            const sendRequest = async (index) => {
+                try {
+                    const response = await fetch('/api', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ index })
+                    });
+                    const data = await response.json();
+                    resultsList.innerHTML += `<li>Request ${data.index} completed</li>`;
+                } catch (error) {
+                    console.log(error);
+                    resultsList.innerHTML += `<li>Request ${index} failed: ${error}</li>`;
+                } finally {
+                    if (++completedRequests === totalRequests) startButton.disabled = false;
+                    activeRequests--;
+                }
+            };
+
+            while (requestIndex <= totalRequests) {
+                if (activeRequests < concurrencyLimit) {
+                    activeRequests++;
+                    sendRequest(requestIndex++);
+                } else {
+                    await sleep(1000 / concurrencyLimit);
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
